@@ -5,7 +5,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../model/api_response.dart';
 import '../../variables/ip_address.dart';
 
-
 class TrackOrderScreen extends StatefulWidget {
   @override
   State<TrackOrderScreen> createState() => TrackOrderScreenState();
@@ -40,7 +39,7 @@ class TrackOrderScreenState extends State<TrackOrderScreen> {
           'Authorization': 'Bearer $token',
         },
       );
-      print('Requesting URL: $ipaddress/template_history/$taskId');
+
       switch (response.statusCode) {
         case 200:
           final data = json.decode(response.body);
@@ -50,28 +49,22 @@ class TrackOrderScreenState extends State<TrackOrderScreen> {
               officeTask: item['Office_task'],
               newAllotedTime: item['New_alloted_time'],
               Status: item['task_status'],
-
             );
           }).toList();
-          print('Response body: ${response.body}');
           break;
         case 404:
           apiResponse.error = 'No task found.';
-          print('Response body: ${response.body}');
           break;
         case 422:
         case 403:
           apiResponse.error = jsonDecode(response.body)['message'];
-          print('Response body: ${response.body}');
           break;
         default:
           apiResponse.error = 'Something went wrong.';
-          print('Response body: ${response.body}');
           break;
       }
     } catch (e) {
       apiResponse.error = 'Something went wrongs. $e';
-      print( apiResponse.error);
     }
 
     return apiResponse;
@@ -92,12 +85,25 @@ class TrackOrderScreenState extends State<TrackOrderScreen> {
             return Center(child: Text('Error: ${snapshot.data?.error}'));
           } else {
             statusList = snapshot.data!.data as List<OrderStatus>;
-            return ListView.builder(
-              itemCount: statusList.length,
-              itemBuilder: (context, index) {
-                final item = statusList[index];
-                return OrderStatusWidget(item: item);
-              },
+            return Row(
+              children: [
+                Expanded(
+                  flex: 1,
+                  child: StepIndicator(
+                    steps: statusList,
+                  ),
+                ),
+                Expanded(
+                  flex: 3,
+                  child: ListView.builder(
+                    itemCount: statusList.length,
+                    itemBuilder: (context, index) {
+                      final item = statusList[index];
+                      return OrderStatusWidget(item: item);
+                    },
+                  ),
+                ),
+              ],
             );
           }
         },
@@ -106,6 +112,54 @@ class TrackOrderScreenState extends State<TrackOrderScreen> {
   }
 }
 
+// Custom Step Indicator Widget
+class StepIndicator extends StatelessWidget {
+  final List<OrderStatus> steps;
+
+  const StepIndicator({Key? key, required this.steps}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: List.generate(steps.length, (index) {
+        final isFinished = steps[index].Status.toLowerCase() == 'finished';
+
+        return Column(
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Align the circle and the line properly
+                Column(
+                  children: [
+                    // Add top margin only for the first circle (index == 0)
+                    Padding(
+                      padding: EdgeInsets.only(top: index == 0 ? 16.0 : 0), // Only for the first item
+                      child: CircleAvatar(
+                        radius: 16,
+                        backgroundColor: isFinished ? Colors.green : Colors.grey[300],
+                        child: Text('${index + 1}', style: TextStyle(color: Colors.white)),
+                      ),
+                    ),
+                    if (index < steps.length - 1)
+                      Container(
+                        height: 75, // Adjust the height of the line between circles
+                        width: 2, // Adjust the width of the line
+                        color: isFinished ? Colors.green : Colors.grey[300],
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ],
+        );
+      }),
+    );
+  }
+}
+
+
+
 // OrderStatus model remains the same
 class OrderStatus {
   final String officeName;
@@ -113,13 +167,11 @@ class OrderStatus {
   final String newAllotedTime;
   final String Status;
 
-
   OrderStatus({
     required this.officeName,
     required this.officeTask,
     required this.newAllotedTime,
     required this.Status,
-
   });
 }
 

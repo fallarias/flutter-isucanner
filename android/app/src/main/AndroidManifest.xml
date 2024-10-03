@@ -70,7 +70,8 @@
         android:icon="@mipmap/ic_launcher"
         android:label="ISU-CANNER"
         tools:ignore="AllowBackup,GoogleAppIndexingWarning"
-        android:requestLegacyExternalStorage="true">
+        android:requestLegacyExternalStorage="true"
+        android:usesCleartextTraffic="true">
 
         <activity android:name="io.flutter.embedding.android.FlutterActivity"
             android:launchMode="singleTop"

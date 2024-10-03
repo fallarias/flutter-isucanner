@@ -27,6 +27,12 @@ Future<void> downloadPdf(BuildContext context, String url, String fileName, Stri
     return;
   }
 
+  // Check if transaction already exists before proceeding
+  await postTransaction(context, token, userId, id);
+  // If the transaction already exists, postTransaction will prevent further action
+
+  // If postTransaction didn't return, proceed with the file download
+
   // Get the external storage directory (e.g., Downloads)
   Directory directory = Directory('/storage/emulated/0/Download');
 
@@ -34,17 +40,6 @@ Future<void> downloadPdf(BuildContext context, String url, String fileName, Stri
   String qrCodePdfPath = '${directory.path}/$fileName-QRCode.pdf';
   String downloadedPdfPath = '${directory.path}/$fileName.pdf'; // Separate name for the downloaded PDF
 
-  // Check if the QR code PDF already exists
-  if (await File(qrCodePdfPath).exists()) {
-    // Show a snackbar to inform the user
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text("QR Code PDF already exists. You cannot download it again."),
-        duration: Duration(seconds: 3),
-      ),
-    );
-    return; // Prevent duplicate download
-  }
 
   try {
     String userDetails = jsonEncode({'userId': userId, 'taskId': id});
@@ -96,9 +91,8 @@ Future<void> downloadPdf(BuildContext context, String url, String fileName, Stri
   } catch (e) {
     print("Error downloading file: $e");
   }
-
-  await postTransaction(token, userId, id);
 }
+
 
 
 
@@ -147,7 +141,7 @@ Future<bool> requestStoragePermission() async {
   return false;
 }
 
-Future<void> postTransaction(String? token, String userId, String id) async {
+Future<void> postTransaction(BuildContext context, String? token, String userId, String id) async {
   try {
     final response = await http.post(
       Uri.parse('$ipaddress/transaction'),
@@ -164,10 +158,20 @@ Future<void> postTransaction(String? token, String userId, String id) async {
     if (response.statusCode == 200) {
       var data = jsonDecode(response.body);
       print('API Response: $data');
+    } else if (response.statusCode == 409) {
+      // If the transaction already exists (HTTP 409 Conflict), show a snackbar or dialog
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Transaction already exists. Download not allowed.'),
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return; // Prevent further processing
     } else {
-      print('Failed to load data. Status code: ${response.statusCode}');
+      print('Failed to create transaction. Status code: ${response.statusCode}');
     }
   } catch (e) {
     print('Something went wrong: $e');
   }
 }
+
